@@ -53,15 +53,15 @@ def index():
                 session['ans_list'] = ans_list
                 session['total_ques'] = len(index_df_list)
                 session['ques_no'] = cand_data.ques_no
-                return redirect("/test")
+                return redirect("/mc_test")
         else:
             flash("Candidate no. not found for this test session !", "error")
     return render_template("index.html")
 
 
 # Let candidate answer the MC questions one by one
-@app.route("/test", methods=["GET", "POST"])
-def test():
+@app.route("/mc_test", methods=["GET", "POST"])
+def mc_test():
 
     # if candidate has not yet logged in, direct to the log in page
     if not 'candidate_no' in session.keys():
@@ -109,7 +109,7 @@ def test():
     exist_ans = session['ans_list'][ques_no - 1]
 
     # show the question and answers to the candidate through HTML
-    return render_template("test.html",
+    return render_template("mc_test.html",
                            ques_num=session['ques_no'],
                            question=ques["question"],
                            choice_1=ques["choice_1"],
@@ -140,7 +140,7 @@ def update_ans():
 @app.route("/save")
 def save():
     update_ans()
-    return redirect("/test")
+    return redirect("/mc_test")
 
 
 @app.route("/finish")
