@@ -6,7 +6,7 @@ import random
 # Parse the question bank Excel file and build up a 2D question position list, based on Group and Category
 class DrawQuestions():
     def __init__(self):
-        self.df = pd.read_excel("questions.xlsx", sheet_name="TTR")
+        self.df = pd.read_excel("questions.xlsx")
 
         # Question group: M, N, O, P
         # Question category: A to H
@@ -30,7 +30,7 @@ class DrawQuestions():
         ques_per_cat = [10, 10, 10, 10, 15, 15, 15, 15]
 
         # Draw questions for a test paper
-        ques_list = []
+        index_df_list = []
         # The questions will follow the category orders, i.e. A to H
         for index_cat, num_ques_cat in enumerate(ques_per_cat):
             # Choose either Group M or N + either Group O or P for each category of questions
@@ -41,14 +41,14 @@ class DrawQuestions():
             # Sort the questions so that it is easier to check the results
             cat_ques_drawn.sort()
             # Combine the questions to form the test paper
-            ques_list = ques_list + cat_ques_drawn
-        return ques_list
+            index_df_list = index_df_list + cat_ques_drawn
+        return index_df_list
 
 
-    def get_ques_num_ans_list(self, ques_list):
+    def get_ques_num_ans_list(self, index_df_list):
         ques_num_list = []
         ques_ans_list = []
-        for index_df in ques_list:
+        for index_df in index_df_list:
             row_content = self.df.iloc[index_df]
             ques_num_list.append(row_content['no'])
             ques_ans_list.append(str(row_content['ans']))

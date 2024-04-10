@@ -1,14 +1,15 @@
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, flash
 from draw_ques import DrawQuestions
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
+import pandas as pd
+import openpyxl
 
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "there_is_no_secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
 db = SQLAlchemy(app)                        # Candidates' data will be saved onto database
-q = DrawQuestions()                         # Carry out the preparation.  Questions will be drawn later.
 
 
 # define the structure of database table
@@ -17,64 +18,76 @@ class Candidate(db.Model):
     candidate_no = db.Column(db.String(20))
     first_name = db.Column(db.String(40))
     last_name = db.Column(db.String(20))
+    phone_no = db.Column(db.String(20))
     date = db.Column(db.Date)
-    time = db.Column(db.Time)
-    ques_num_list = db.Column(db.String(1000))
-    correct_ans_list = db.Column(db.String(400))
-    ans_list = db.Column(db.String(400))
+    time_updated = db.Column(db.Time)
+    index_df_str = db.Column(db.String(1000))          # index_df: 0 to ...
+    ques_num_str = db.Column(db.String(1000))          # ques_num: e.g. M01A
+    correct_ans_str = db.Column(db.String(400))
+    ans_str = db.Column(db.String(400))
+    ques_no = db.Column(db.Integer)
     final_score = db.Column(db.Integer)
 
 
+# Log-in is required before proceeding to the MC test.
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        session['candidate_no'] = request.form["candidate_no"]
-        ques_list = q.get_ques_list()                           # draw one set of questions for each candidate
-        session['ques_list'] = ques_list
-        session['ques_num_list'], session['correct_ans_list'] = q.get_ques_num_ans_list(ques_list)
-        session['total_ques'] = len(session['ques_list'])
-        session['ans_list'] = ['0'] * session['total_ques']     # each candidate has his/her answer list as well
-        session['ques_no'] = 1
-
-        today = date.today()
-        t_now = datetime.now().time()
-
-        # convert Python list to delimited string or it could not be stored into database
-        ques_num_list = ",".join(item for item in session['ques_num_list'])
-        correct_ans_list = ",".join(item for item in session['correct_ans_list'])
-        candidate = Candidate(candidate_no=session['candidate_no'], date=today, time=t_now, ques_num_list=ques_num_list,
-                              correct_ans_list=correct_ans_list)
-        db.session.add(candidate)
-        db.session.commit()
-
-        session.modified = True
-        return redirect("/test")
-
+        candidate_no = request.form["candidate_no"]
+        # check if the candidate's test data exist in database
+        cand_data = db.session.query(Candidate).filter_by(candidate_no=candidate_no).first()
+        if cand_data is not None:
+            # if the candidate has already completed the test (i.e. score >= 0),
+            # he/she is not allowed to enter again
+            if cand_data.final_score != -1:
+                flash("You have already completed the test !", "error")
+            else:
+                # else, retrieve the data and keep them in session variables
+                # this will avoid excessive access to database during the test
+                session['candidate_no'] = candidate_no
+                index_df_str = cand_data.index_df_str
+                ans_str = cand_data.ans_str
+                index_df_list = [int(item) for item in index_df_str.split(',')]
+                ans_list = [item for item in ans_str.split(',')]
+                session['ques_list'] = index_df_list
+                session['ans_list'] = ans_list
+                session['total_ques'] = len(index_df_list)
+                session['ques_no'] = cand_data.ques_no
+                return redirect("/test")
+        else:
+            flash("Candidate no. not found for this test session !", "error")
     return render_template("index.html")
 
 
+# Let candidate answer the MC questions one by one
 @app.route("/test", methods=["GET", "POST"])
 def test():
 
-    # candidate must log in first
+    # if candidate has not yet logged in, direct to the log in page
     if not 'candidate_no' in session.keys():
         return redirect("/index")
 
+    increment = 0
 
-    increment = 0  # Python interpreter insists declare the variable first
     if request.method == "POST":
-        # save the candidate's chosen answer
+        # save the answer just picked
         if "answer" in request.form:
             answer = request.form["answer"]
             session['ans_list'][session['ques_no'] - 1] = answer
 
+        # save all answers entered up to this moment
+        if "save" in request.form:
+            # without the following line, session variable will not be updated with the picked answer
+            session.modified = True
+            return redirect("/save")
+
         # end of the test?
         if "finish" in request.form:
-            # without the following line, the answer picked just before finish would not be passed by session variable
+            # without the following line, session variable will not be updated with the picked answer
             session.modified = True
             return redirect("/finish")
 
-        # the candidate wants to move the next or previous question?
+        # the candidate is allowed to move forward or backward
         if "direction" in request.form:
             direction = request.form["direction"]
             if direction == "next":
@@ -82,7 +95,7 @@ def test():
             elif direction == "prev":
                 increment = -1
 
-
+    # get the next/prev question
     ques_no = session['ques_no'] + increment
     if ques_no > session['total_ques']:
         ques_no = 1
@@ -90,9 +103,9 @@ def test():
         ques_no = session['total_ques']
     session['ques_no'] = ques_no
 
-    # prepare the next/previous question
     index_df = session['ques_list'][ques_no - 1]
     ques = q.get_question(index_df)
+    # remember those answers which have already been entered by the candidate
     exist_ans = session['ans_list'][ques_no - 1]
 
     # show the question and answers to the candidate through HTML
@@ -107,33 +120,79 @@ def test():
                            exist_ans=exist_ans)
 
 
-@app.route("/finish")
-def finish():
-    # candidate's answers will be stored in database
+def update_ans():
+    # save candidate's answers into database
     candidate_no = session["candidate_no"]
     ans_list = session['ans_list']
-    ans_list_str = ",".join(item for item in ans_list)
-    print(ans_list)
+    ans_str = ",".join(item for item in ans_list)
 
+    candidate = db.session.query(Candidate).filter_by(candidate_no=candidate_no).first()
+    candidate.ans_str = ans_str
+
+    # log the time and the current question no. as well
+    t_now = datetime.now().time()
+    candidate.time_updated = t_now
+    candidate.ques_no = session['ques_no']
+
+    db.session.commit()
+
+
+@app.route("/save")
+def save():
+    update_ans()
+    return redirect("/test")
+
+
+@app.route("/finish")
+def finish():
+    update_ans()
     # compare candidate's answers to the correct answers, hence calculate the final score
-    candidate = Candidate.query.filter_by(candidate_no=candidate_no).first()
-    correct_ans_list = candidate.correct_ans_list.split(",")
+    candidate_no = session["candidate_no"]
+    ans_list = session['ans_list']
+    candidate = db.session.query(Candidate).filter_by(candidate_no=candidate_no).first()
+    correct_ans_list = candidate.correct_ans_str.split(",")
     final_score = 0
     for index in range(0, session['total_ques']):
         if ans_list[index] == correct_ans_list[index]:
             final_score = final_score + 1
-
-    # save candidate's answers and final score to database
-    candidate.ans_list = ans_list_str
     candidate.final_score = final_score
     db.session.commit()
 
     # clear the Session variables
     session.clear()
-    return "<p>Test finished!</p>"
+    return "<h1>Test finished!</h1>"
 
 
 if __name__ == "__main__":
     with app.app_context():
+        # Carry out the preparation.  Questions will be drawn later.
+        q = DrawQuestions()
         db.create_all()
-        app.run(debug=True, host='192.168.1.69', port=5003)
+        # Retrieve candidates' information from Excel file, then prepare database records for the test
+        df = pd.read_excel("candidates.xlsx")
+        for index, row in df.iterrows():
+            candidate_no = row['cand_no']
+            first_name = row['first_name']
+            last_name = row['last_name']
+            phone_no = str(row['phone_no'])
+            # if candidate's record is not found in database, create one
+            if db.session.query(Candidate).filter_by(candidate_no=candidate_no).first() is None:
+                # draw one set of questions for each candidate
+                index_df_list = q.get_ques_list()
+                ques_num_list, correct_ans_list = q.get_ques_num_ans_list(index_df_list)
+                today = date.today()
+                # convert Python list to delimited string or it could not be stored into database
+                index_df_str = ",".join(str(item) for item in index_df_list)
+                ques_num_str = ",".join(item for item in ques_num_list)
+                correct_ans_str = ",".join(item for item in correct_ans_list)
+                ans_list = ['0'] * len(index_df_list)
+                ans_str = ",".join(item for item in ans_list)
+                # indicate that the candidate has not yet attempted the test
+                final_score = -1
+                candidate = Candidate(candidate_no=candidate_no, first_name=first_name, last_name=last_name,
+                                      phone_no=phone_no, date=today, index_df_str=index_df_str, ques_num_str=ques_num_str,
+                                      correct_ans_str=correct_ans_str, ans_str=ans_str, ques_no=1, final_score=final_score)
+                db.session.add(candidate)
+                db.session.commit()
+
+        app.run(debug=True, host='192.168.1.69', port=5001)

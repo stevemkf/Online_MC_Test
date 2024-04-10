@@ -15,7 +15,16 @@
                     <label for="candidate_no">Candidate No.:</label>
                     <input class="form-control" type="text" id="candidate_no" name="candidate_no" required>
                 </div>
-                <button class="btn btn-secondary mb-4" type="submit">Submit</button>
+                <button class="btn btn-secondary mb-4" type="submit">Log in</button>
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                    <div class="alert alert-success">
+                        {% for message in messages %}
+                            {{ message }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                {% endwith %}
             </form>
         </div>
 </body>
