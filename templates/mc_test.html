@@ -69,5 +69,16 @@
                 </tr>
             </table>
         </form>
+        <div class="center" style="width:1024px">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="alert alert-success">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+        </div>
     </body>
 </html>

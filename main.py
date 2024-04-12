@@ -14,7 +14,7 @@ db = SQLAlchemy(app)                        # Candidates' data will be saved ont
 
 
 # define the structure of database table
-class Candidate(db.Model):
+class Candidates(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     candidate_no = db.Column(db.String(20))
     first_name = db.Column(db.String(40))
@@ -27,6 +27,7 @@ class Candidate(db.Model):
     correct_ans_str = db.Column(db.String(400))
     ans_str = db.Column(db.String(400))
     ques_no = db.Column(db.Integer)
+    test_completed = db.Column(db.Boolean)
     final_score = db.Column(db.Integer)
 
 
@@ -36,11 +37,11 @@ def index():
     if request.method == "POST":
         candidate_no = request.form["candidate_no"]
         # check if the candidate's test data exist in database
-        cand_data = db.session.query(Candidate).filter_by(candidate_no=candidate_no).first()
+        cand_data = db.session.query(Candidates).filter_by(candidate_no=candidate_no).first()
         if cand_data is not None:
             # if the candidate has already completed the test (i.e. score >= 0),
             # he/she is not allowed to enter again
-            if cand_data.final_score != -1:
+            if cand_data.test_completed == True:
                 flash("You have already completed the test !", "error")
             else:
                 # else, retrieve the data and keep them in session variables
@@ -121,13 +122,13 @@ def mc_test():
                            exist_ans=exist_ans)
 
 
-def update_ans():
+def update_ans(completed):
     # save candidate's answers into database
     candidate_no = session["candidate_no"]
     ans_list = session['ans_list']
     ans_str = ",".join(item for item in ans_list)
 
-    candidate = db.session.query(Candidate).filter_by(candidate_no=candidate_no).first()
+    candidate = db.session.query(Candidates).filter_by(candidate_no=candidate_no).first()
     candidate.ans_str = ans_str
 
     # log the time and the current question no. as well
@@ -135,30 +136,21 @@ def update_ans():
     candidate.time_updated = t_now
     candidate.ques_no = session['ques_no']
 
+    # has the candidate completed the whole test?
+    candidate.test_completed = completed
     db.session.commit()
 
 
 @app.route("/save")
 def save():
-    update_ans()
+    update_ans(completed=False)
+    flash("Your answers have been saved in server.", "success")
     return redirect("/mc_test")
 
 
 @app.route("/finish")
 def finish():
-    update_ans()
-    # compare candidate's answers to the correct answers, hence calculate the final score
-    candidate_no = session["candidate_no"]
-    ans_list = session['ans_list']
-    candidate = db.session.query(Candidate).filter_by(candidate_no=candidate_no).first()
-    correct_ans_list = candidate.correct_ans_str.split(",")
-    final_score = 0
-    for index in range(0, session['total_ques']):
-        if ans_list[index] == correct_ans_list[index]:
-            final_score = final_score + 1
-    candidate.final_score = final_score
-    db.session.commit()
-
+    update_ans(completed=True)
     # clear the Session variables
     session.clear()
     return "<h1>Test finished!</h1>"
@@ -177,7 +169,7 @@ if __name__ == "__main__":
             last_name = row['last_name']
             phone_no = str(row['phone_no'])
             # if candidate's record is not found in database, create one
-            if db.session.query(Candidate).filter_by(candidate_no=candidate_no).first() is None:
+            if db.session.query(Candidates).filter_by(candidate_no=candidate_no).first() is None:
                 # draw one set of questions for each candidate
                 index_df_list = q.get_ques_list(ques_per_cat_list)
                 ques_num_list, correct_ans_list = q.get_ques_num_ans_list(index_df_list)
@@ -189,11 +181,12 @@ if __name__ == "__main__":
                 ans_list = ['0'] * len(index_df_list)
                 ans_str = ",".join(item for item in ans_list)
                 # indicate that the candidate has not yet attempted the test
-                final_score = -1
-                candidate = Candidate(candidate_no=candidate_no, first_name=first_name, last_name=last_name,
+                candidate = Candidates(candidate_no=candidate_no, first_name=first_name, last_name=last_name,
                                       phone_no=phone_no, date=today, index_df_str=index_df_str, ques_num_str=ques_num_str,
-                                      correct_ans_str=correct_ans_str, ans_str=ans_str, ques_no=1, final_score=final_score)
+                                      correct_ans_str=correct_ans_str, ans_str=ans_str, ques_no=1, test_completed=False)
                 db.session.add(candidate)
                 db.session.commit()
 
-        app.run(debug=True, host='192.168.1.69', port=5001)
+        # add host IP in case you want multiple candidates to sit for the test on local network
+        # run(debug=True, host='192.168.1.69', port=5001)
+        app.run(debug=True, port=5001)
