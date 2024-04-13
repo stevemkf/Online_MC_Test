@@ -171,7 +171,7 @@ if __name__ == "__main__":
             # if candidate's record is not found in database, create one
             if db.session.query(Candidates).filter_by(candidate_no=candidate_no).first() is None:
                 # draw one set of questions for each candidate
-                index_df_list = q.get_ques_list(ques_per_cat_list)
+                index_df_list = q.get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
                 ques_num_list, correct_ans_list = q.get_ques_num_ans_list(index_df_list)
                 today = date.today()
                 # convert Python list to delimited string or it could not be stored into database
