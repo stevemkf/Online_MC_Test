@@ -9,18 +9,19 @@
 
 <body>
         <div class="container">
-            <h1 class="mt-4 mb-4">Please log in to start the test.</h1>
+            <h1 class="mt-4 mb-4">請先登入 Please log in to start the test.</h1>
             <form method="post">
                 <div class="form-group mb-4">
-                    <label for="candidate_no">Candidate No.:</label>
+                    <label for="candidate_no">考生編號 Candidate No.:</label>
                     <input class="form-control" type="text" id="candidate_no" name="candidate_no" required>
                 </div>
-                <button class="btn btn-secondary mb-4" type="submit">Log in</button>
+                <button class="btn btn-secondary mb-4" type="submit">登入 Log in</button>
                 {% with messages = get_flashed_messages() %}
                     {% if messages %}
                     <div class="alert alert-success">
                         {% for message in messages %}
                             {{ message }}
+                            <br>
                         {% endfor %}
                     </div>
                     {% endif %}

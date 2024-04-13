@@ -57,6 +57,7 @@ def index():
                 session['ques_no'] = cand_data.ques_no
                 return redirect("/mc_test")
         else:
+            flash("考生編號不正確!", "error")
             flash("Candidate no. not found for this test session !", "error")
     return render_template("index.html")
 
@@ -144,7 +145,7 @@ def update_ans(completed):
 @app.route("/save")
 def save():
     update_ans(completed=False)
-    flash("Your answers have been saved in server.", "success")
+    flash("答案已經儲存至伺服器 Your answers have been saved in server.", "success")
     return redirect("/mc_test")
 
 
@@ -153,7 +154,7 @@ def finish():
     update_ans(completed=True)
     # clear the Session variables
     session.clear()
-    return "<h1>Test finished!</h1>"
+    return "<h1>測驗結束 Test finished!</h1>"
 
 
 if __name__ == "__main__":
