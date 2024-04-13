@@ -14,22 +14,23 @@ def write_marksheet(marksheet):
 
 # retrieve candidates' data from SQLite3 database
 connection = sqlite3.connect("instance/data.db")
-cursor = connection.execute("SELECT id, candidate_no, last_name, first_name, correct_ans_str, ans_str from Candidates WHERE test_completed=True")
+cursor = connection.execute("SELECT id, batch_no, candidate_no, last_name, first_name, correct_ans_str, ans_str from Candidates WHERE test_completed=True")
 
 # computed scores will be written onto an Excel file, in addition to the database
 marksheet = []
-marksheet.append(['candidate no.', 'last name', 'first name', 'final score'])
+marksheet.append(['batch no.', 'candidate no.', 'last name', 'first name', 'final score'])
 
 score_id_list = []
 record = cursor.fetchone()
 while record is not None:
     id = record[0]
-    candidate_no = record[1]
-    last_name = record[2]
-    first_name = record[3]
+    batch_no = record[1]
+    candidate_no = record[2]
+    last_name = record[3]
+    first_name = record[4]
     # convert string to list in order to check the answers one by one
-    correct_ans_list = [item for item in record[4].split(',')]
-    ans_list = [item for item in record[5].split(',')]
+    correct_ans_list = [item for item in record[5].split(',')]
+    ans_list = [item for item in record[6].split(',')]
     final_score = 0
     for index in range(0, len(correct_ans_list)):
         if ans_list[index] == correct_ans_list[index]:
@@ -38,7 +39,7 @@ while record is not None:
     # build the score, id list so that SQL update will be executed faster
     score_id_list.append([final_score, id])
     # build the mark sheet
-    marksheet.append([candidate_no, last_name, first_name, final_score])
+    marksheet.append([batch_no, candidate_no, last_name, first_name, final_score])
     record = cursor.fetchone()
 
 cursor.close()

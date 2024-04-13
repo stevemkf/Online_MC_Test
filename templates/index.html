@@ -12,8 +12,14 @@
             <h1 class="mt-4 mb-4">請先登入 Please log in to start the test.</h1>
             <form method="post">
                 <div class="form-group mb-4">
+                    <label for="batch_no">測驗編號 Test batch No.:</label>
+                    <input class="form-control" type="text" id="batch_no" name="batch_no" required>
+                    <br>
                     <label for="candidate_no">考生編號 Candidate No.:</label>
                     <input class="form-control" type="text" id="candidate_no" name="candidate_no" required>
+                    <br>
+                    <label for="candidate_no">密碼 Password (i.e. phone number):</label>
+                    <input class="form-control" type="password" id="password" name="password" required>
                 </div>
                 <button class="btn btn-secondary mb-4" type="submit">登入 Log in</button>
                 {% with messages = get_flashed_messages() %}
