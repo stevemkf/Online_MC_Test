@@ -1,16 +1,18 @@
 from flask import Flask, render_template, request, redirect, session, flash
-from draw_ques import DrawQuestions
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
+from read_config import *
+from draw_ques import DrawQuestions
+from compute_scores import ComputeScores
 import pandas as pd
 import openpyxl
-from read_config import *
 
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "there_is_no_secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
 db = SQLAlchemy(app)                                   # Candidates' data will be saved onto database
+cs = ComputeScores(db)
 
 
 # define the structure of database table
@@ -37,23 +39,30 @@ class Candidates(db.Model):
 def index():
     if request.method == "POST":
         batch_no = request.form["batch_no"]
+        session['batch_no'] = int(batch_no)
         candidate_no = request.form["candidate_no"]
+        password = request.form["password"]
+
+        # administrator?
+        if (candidate_no == "admin") and (password == "39076670"):
+            session['administrator'] = "Steve Fung"
+            return redirect("/admin")
+
         # check if the candidate's test data exist in database
         cand_data = db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first()
         if cand_data is not None:
             # check password
-            if request.form["password"] != cand_data.phone_no:
+            if password != cand_data.phone_no:
                 flash("密碼不正確!", "error")
                 flash("Incorrect password!", "error")
             # if the candidate has already completed the test (i.e. score >= 0),
             # he/she is not allowed to enter again
-            elif cand_data.test_completed == True:
+            elif cand_data.test_completed is True:
                 flash("你的測驗已經結束!", "error")
                 flash("You have already completed the test!", "error")
             else:
                 # else, retrieve the data and keep them in session variables
                 # this will avoid excessive access to database during the test
-                session['batch_no'] = int(batch_no)
                 session['candidate_no'] = candidate_no
                 index_df_str = cand_data.index_df_str
                 ans_str = cand_data.ans_str
@@ -147,10 +156,19 @@ def update_ans(completed):
     candidate.date_updated = today
     candidate.time_updated = t_now
     candidate.ques_no = session['ques_no']
-
-    # has the candidate completed the whole test?
     candidate.test_completed = completed
+
+    final_score = 0
+    # if candidate has completed the whole test, calculate his/her final score
+    if completed is True:
+        correct_ans_list = [item for item in candidate.correct_ans_str.split(',')]
+        for index in range(0, len(correct_ans_list)):
+            if ans_list[index] == correct_ans_list[index]:
+                final_score = final_score + 1
+        candidate.final_score = final_score
+
     db.session.commit()
+    return final_score
 
 
 @app.route("/save")
@@ -163,10 +181,72 @@ def save():
 
 @app.route("/finish")
 def finish():
-    update_ans(completed=True)
+    final_score = update_ans(completed=True)
     # clear the Session variables
     session.clear()
-    return "<h1>測驗結束 Test finished!</h1>"
+    return f"測驗結束. 你的總分是 {final_score}.<br>Test finished. Your score is {final_score}."
+
+
+# Retrieve candidates' information from Excel file, then prepare records in database
+def init_test_batch(batch_no):
+    df = pd.read_excel(candidates_data)
+    filtered_dt = df.query('batch_no == @batch_no')
+    count = 0
+    for index, row in filtered_dt.iterrows():
+        candidate_no = row['cand_no']
+        first_name = row['first_name']
+        last_name = row['last_name']
+        phone_no = str(row['phone_no'])
+        # if candidate's record is not found in database, create one
+        if db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first() is None:
+            # draw one set of questions for each candidate
+            index_df_list = q.get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
+            ques_num_list, correct_ans_list = q.get_ques_num_ans_list(index_df_list)
+            # convert Python list to delimited string or it could not be stored into database
+            index_df_str = ",".join(str(item) for item in index_df_list)
+            ques_num_str = ",".join(item for item in ques_num_list)
+            correct_ans_str = ",".join(item for item in correct_ans_list)
+            ans_list = ['0'] * len(index_df_list)
+            ans_str = ",".join(item for item in ans_list)
+            # indicate that the candidate has not yet attempted the test
+            candidate = Candidates(batch_no=batch_no, candidate_no=candidate_no, first_name=first_name, last_name=last_name,
+                                   phone_no=phone_no, index_df_str=index_df_str, ques_num_str=ques_num_str,
+                                   correct_ans_str=correct_ans_str, ans_str=ans_str, ques_no=1, test_completed=False)
+            db.session.add(candidate)
+            db.session.commit()
+            count = count + 1
+    return count
+
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin():
+
+    # if administrator has not logged in, direct to the log-in page
+    if not 'administrator' in session.keys():
+        return redirect("/")
+    if session['administrator'] != "Steve Fung":
+        return redirect("/")
+
+    batch_no = session['batch_no']                                    # for the first entry of this html page
+    if request.method == "POST":
+        batch_no = int(request.form["batch_no"])
+        if "init" in request.form:
+            count = init_test_batch(batch_no)
+            flash(f"{count} records were newly added in the server.", "success")
+        if "show" in request.form:
+            pass
+        if "terminate" in request.form:
+            for candidate in db.session.query(Candidates).filter_by(batch_no=batch_no).all():
+                candidate.test_completed = True
+            db.session.commit()
+        if "compute" in request.form:
+            cs.compute_scores(batch_no)
+            flash("Scores were also exported to Excel file 'scores.xlsx'.", "success")
+    # data will be a list of tuples
+    data = db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name,
+                            Candidates.test_completed, Candidates.final_score).filter_by(batch_no=batch_no).all()
+    heading = ("Candidate No.", "Last Name", "First Name", "Test Completed", "Score")
+    return render_template("admin.html", batch_no=batch_no, headings=heading, data=data)
 
 
 if __name__ == "__main__":
@@ -174,31 +254,6 @@ if __name__ == "__main__":
         # Carry out the preparation.  Questions will be drawn later.
         q = DrawQuestions(file_ques_bank, first_group, last_group, first_category, last_category)
         db.create_all()
-        # Retrieve candidates' information from Excel file, then prepare database records for the test
-        df = pd.read_excel("candidates.xlsx")
-        for index, row in df.iterrows():
-            batch_no = row['batch_no']
-            candidate_no = row['cand_no']
-            first_name = row['first_name']
-            last_name = row['last_name']
-            phone_no = str(row['phone_no'])
-            # if candidate's record is not found in database, create one
-            if db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first() is None:
-                # draw one set of questions for each candidate
-                index_df_list = q.get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
-                ques_num_list, correct_ans_list = q.get_ques_num_ans_list(index_df_list)
-                # convert Python list to delimited string or it could not be stored into database
-                index_df_str = ",".join(str(item) for item in index_df_list)
-                ques_num_str = ",".join(item for item in ques_num_list)
-                correct_ans_str = ",".join(item for item in correct_ans_list)
-                ans_list = ['0'] * len(index_df_list)
-                ans_str = ",".join(item for item in ans_list)
-                # indicate that the candidate has not yet attempted the test
-                candidate = Candidates(batch_no=batch_no, candidate_no=candidate_no, first_name=first_name, last_name=last_name,
-                                      phone_no=phone_no, index_df_str=index_df_str, ques_num_str=ques_num_str,
-                                      correct_ans_str=correct_ans_str, ans_str=ans_str, ques_no=1, test_completed=False)
-                db.session.add(candidate)
-                db.session.commit()
 
         # add host IP in case you want multiple candidates to sit for the test on local network
         # run(debug=True, host='192.168.1.69', port=5001)
