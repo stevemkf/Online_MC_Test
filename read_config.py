@@ -16,5 +16,7 @@ ques_per_cat_str = str(d['questions per category'])
 ques_per_cat_list = [int(item) for item in ques_per_cat_str.split(',')]
 
 file_ques_bank = d['question bank']
+candidates_data = d['candidates data']
+file_scores = d['test results']
 file_testpaper = d['test paper']
 file_marksheet = d['marksheet']
