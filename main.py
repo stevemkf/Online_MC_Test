@@ -148,8 +148,11 @@ def update_ans(completed):
     ans_str = ",".join(item for item in ans_list)
 
     candidate = db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first()
-    candidate.ans_str = ans_str
+    # answers cannot be changed if test has been completed before.
+    if candidate.test_completed is True:
+        return -1
 
+    candidate.ans_str = ans_str
     # log the time and the current question no. as well
     today = date.today()
     t_now = datetime.now().time()
@@ -157,8 +160,8 @@ def update_ans(completed):
     candidate.time_updated = t_now
     candidate.ques_no = session['ques_no']
     candidate.test_completed = completed
-
     final_score = 0
+
     # if candidate has completed the whole test, calculate his/her final score
     if completed is True:
         correct_ans_list = [item for item in candidate.correct_ans_str.split(',')]
@@ -173,18 +176,27 @@ def update_ans(completed):
 
 @app.route("/save")
 def save():
-    update_ans(completed=False)
-    flash("答案已經儲存至伺服器.", "success")
-    flash("Your answers have been saved in server.", "success")
-    return redirect("/mc_test")
+    result = update_ans(completed=False)
+    if result == -1:
+        session.clear()
+        message = f"測驗較早前已經結束，答案不能更改。<br>Test finished before.  Answers cannot be changed."
+        return message
+    else:
+        flash("答案已經儲存至伺服器。", "success")
+        flash("Your answers have been saved in server.", "success")
+        return redirect("/mc_test")
 
 
 @app.route("/finish")
 def finish():
-    final_score = update_ans(completed=True)
+    result = update_ans(completed=True)
+    if result == -1:
+        message = f"測驗較早前已經結束，答案不能更改。<br>Test finished before.  Answers cannot be changed."
+    else:
+        message = f"測驗結束。 你的總分是 {result}.<br>Test finished. Your score is {result}."
     # clear the Session variables
     session.clear()
-    return f"測驗結束. 你的總分是 {final_score}.<br>Test finished. Your score is {final_score}."
+    return message
 
 
 # Retrieve candidates' information from Excel file, then prepare records in database
@@ -257,4 +269,4 @@ if __name__ == "__main__":
 
         # add host IP in case you want multiple candidates to sit for the test on local network
         # run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5002)
+        app.run(debug=True, port=5001)
