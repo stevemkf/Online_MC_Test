@@ -9,17 +9,21 @@
 </head>
 <body style="margin: 2rem;">
     <form method="post">
-        <label for="batch_no">測驗編號 Test batch No.:</label>
+        <label for="batch_no">Test batch No.:</label>
         <input type="number" id="batch_no" name="batch_no" value={{ batch_no }} required><p></p>
-
         <button class="btn" type="submit" name="init" value="init">
-            Read candidates.xlsx and create candidates' records in database</button><br><br>
+            1) Read candidates.xlsx and create candidates' records in database</button><br><br>
         <button class="btn" type="submit" name="show" value="show">
-            Shows candidates' test data</button><br><br>
+            2) Shows candidates' test data</button><br><br>
         <button class="btn" type="submit" name="terminate" value="terminate">
-            Terminate the test for all candidates</button><br><br>
+            3) Terminate the test for all candidates</button><br><br>
         <button class="btn" type="submit" name="compute" value="compute">
-            Compute final scores for candidates who have completed the test</button>
+            4) Compute final scores for candidates who have completed the test</button><br><br>
+        <button class="btn" type="submit" name="change" value="change">
+            5) Change a candidate's "Test Completed" status</button><br><br>
+        <label for="candidate_no">Candidate No.:</label>
+        <input type="text" id="candidate_no" name="candidate_no" value="e.g. EL123456">
+        <label for="candidate_no">*** required for Function (5) only ***</label><br><br>
     </form>
     <br></br>
     <table class="table">

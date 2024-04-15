@@ -245,15 +245,26 @@ def admin():
         if "init" in request.form:
             count = init_test_batch(batch_no)
             flash(f"{count} records were newly added in the server.", "success")
-        if "show" in request.form:
+        elif "show" in request.form:
             pass
-        if "terminate" in request.form:
+        elif "terminate" in request.form:
             for candidate in db.session.query(Candidates).filter_by(batch_no=batch_no).all():
                 candidate.test_completed = True
             db.session.commit()
-        if "compute" in request.form:
+            flash("Done.", "success")
+        elif "compute" in request.form:
             cs.compute_scores(batch_no)
             flash("Scores were also exported to Excel file 'scores.xlsx'.", "success")
+        elif "change" in request.form:
+            candidate_no = request.form["candidate_no"]
+            candidate = db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first()
+            if candidate is not None:
+                status = candidate.test_completed
+                candidate.test_completed = 1 - status
+                db.session.commit()
+                flash(f"Status was changed.", "success")
+            else:
+                flash("Candidate no. not found.  Please check.", "success")
     # data will be a list of tuples
     data = db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name,
                             Candidates.test_completed, Candidates.final_score).filter_by(batch_no=batch_no).all()
