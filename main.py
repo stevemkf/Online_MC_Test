@@ -11,8 +11,11 @@ import openpyxl
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "there_is_no_secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
-db = SQLAlchemy(app)                                   # Candidates' data will be saved onto database
+db = SQLAlchemy(app)
 cs = ComputeScores(db)
+
+# Carry out the preparation.  Questions will be drawn later.
+ques_bank = DrawQuestions(file_ques_bank, first_group, last_group, first_category, last_category)
 
 
 # define the structure of database table
@@ -81,6 +84,7 @@ def index():
 # Let candidate answer the MC questions one by one
 @app.route("/mc_test", methods=["GET", "POST"])
 def mc_test():
+    global ques_bank
 
     # if candidate has not yet logged in, direct to the log in page
     if not 'candidate_no' in session.keys():
@@ -124,7 +128,7 @@ def mc_test():
     session['ques_no'] = ques_no
 
     index_df = session['ques_list'][ques_no - 1]
-    ques = q.get_question(index_df)
+    ques = ques_bank.get_question(index_df)
     # remember those answers which have already been entered by the candidate
     exist_ans = session['ans_list'][ques_no - 1]
 
@@ -201,6 +205,8 @@ def finish():
 
 # Retrieve candidates' information from Excel file, then prepare records in database
 def init_test_batch(batch_no):
+    global ques_bank
+
     df = pd.read_excel(candidates_data)
     filtered_dt = df.query('batch_no == @batch_no')
     count = 0
@@ -212,8 +218,8 @@ def init_test_batch(batch_no):
         # if candidate's record is not found in database, create one
         if db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first() is None:
             # draw one set of questions for each candidate
-            index_df_list = q.get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
-            ques_num_list, correct_ans_list = q.get_ques_num_ans_list(index_df_list)
+            index_df_list = ques_bank.get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
+            ques_num_list, correct_ans_list = ques_bank.get_ques_num_ans_list(index_df_list)
             # convert Python list to delimited string or it could not be stored into database
             index_df_str = ",".join(str(item) for item in index_df_list)
             ques_num_str = ",".join(item for item in ques_num_list)
@@ -274,8 +280,6 @@ def admin():
 
 if __name__ == "__main__":
     with app.app_context():
-        # Carry out the preparation.  Questions will be drawn later.
-        q = DrawQuestions(file_ques_bank, first_group, last_group, first_category, last_category)
         db.create_all()
 
         # add host IP in case you want multiple candidates to sit for the test on local network
