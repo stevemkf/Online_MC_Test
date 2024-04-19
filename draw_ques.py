@@ -28,6 +28,8 @@ class DrawQuestions():
 
 
     # Randomly draw questions for one test paper.  Return a list of indexes for the dataframe
+    # It is assumed that the question groups are divided into two batches.
+    # Each batch contribute one group of questions for each category, MxxA, OxxA.
     def get_ques_list(self, first_group, mid_group, last_group, ques_per_cat_list):
         # Number of questions to be drawn from each category
 

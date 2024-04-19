@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 from read_config import *
-from draw_ques import DrawQuestions
 from compute_scores import ComputeScores
 import pandas as pd
 import openpyxl
@@ -13,14 +12,13 @@ app.config["SECRET_KEY"] = "there_is_no_secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
 db = SQLAlchemy(app)
 cs = ComputeScores(db)
-
-# Carry out the preparation.  Questions will be drawn later.
-ques_bank = DrawQuestions(file_ques_bank, first_group, last_group, first_category, last_category)
+create_trade_dicts()
 
 
 # define the structure of database table
 class Candidates(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    trade = db.Column(db.String(10))
     batch_no = db.Column(db.Integer)
     candidate_no = db.Column(db.String(20))
     first_name = db.Column(db.String(40))
@@ -41,6 +39,8 @@ class Candidates(db.Model):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
+        trade = request.form["trade"]
+        session['trade'] = trade
         batch_no = request.form["batch_no"]
         session['batch_no'] = int(batch_no)
         candidate_no = request.form["candidate_no"]
@@ -52,12 +52,12 @@ def index():
             return redirect("/admin")
 
         # check if the candidate's test data exist in database
-        cand_data = db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first()
+        cand_data = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
         if cand_data is not None:
             # check password
             if password != cand_data.phone_no:
                 flash("密碼不正確!", "error")
-                flash("Incorrect password!", "error")
+                flash("Password incorrect!", "error")
             # if the candidate has already completed the test (i.e. score >= 0),
             # he/she is not allowed to enter again
             elif cand_data.test_completed is True:
@@ -76,8 +76,8 @@ def index():
                 session['ques_no'] = cand_data.ques_no
                 return redirect("/mc_test")
         else:
-            flash("測驗編號或考生編號不正確!", "error")
-            flash("Test batch no. or Candidate no. incorrect!", "error")
+            flash("輸入資料不正確!", "error")
+            flash("Input data incorrect!", "error")
     return render_template("index.html")
 
 
@@ -128,9 +128,10 @@ def mc_test():
     session['ques_no'] = ques_no
 
     index_df = session['ques_list'][ques_no - 1]
-    ques = ques_bank.get_question(index_df)
+    trade = session['trade']
+    ques = ques_bank[trade].get_question(index_df)
     # remember those answers which have already been entered by the candidate
-    exist_ans = session['ans_list'][ques_no - 1]
+    existing_ans = session['ans_list'][ques_no - 1]
 
     # show the question and answers to the candidate through HTML
     return render_template("mc_test.html",
@@ -141,17 +142,18 @@ def mc_test():
                            choice_3=ques["choice_3"],
                            choice_4=ques["choice_4"],
                            fname_image=ques["image"],
-                           exist_ans=exist_ans)
+                           exist_ans=existing_ans)
 
 
 def update_ans(completed):
     # save candidate's answers into database
+    trade = session["trade"]
     batch_no = session["batch_no"]
     candidate_no = session["candidate_no"]
     ans_list = session['ans_list']
     ans_str = ",".join(item for item in ans_list)
 
-    candidate = db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first()
+    candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
     # answers cannot be changed if test has been completed before.
     if candidate.test_completed is True:
         return -1
@@ -204,11 +206,10 @@ def finish():
 
 
 # Retrieve candidates' information from Excel file, then prepare records in database
-def init_test_batch(batch_no):
-    global ques_bank
+def init_test_batch(trade, batch_no):
 
-    df = pd.read_excel(candidates_data)
-    filtered_dt = df.query('batch_no == @batch_no')
+    df = pd.read_excel("candidates.xlsx")
+    filtered_dt = df.query('trade==@trade and batch_no == @batch_no')
     count = 0
     for index, row in filtered_dt.iterrows():
         candidate_no = row['cand_no']
@@ -216,10 +217,16 @@ def init_test_batch(batch_no):
         last_name = row['last_name']
         phone_no = str(row['phone_no'])
         # if candidate's record is not found in database, create one
-        if db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first() is None:
+        if db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no,
+                                                  candidate_no=candidate_no).first() is None:
             # draw one set of questions for each candidate
-            index_df_list = ques_bank.get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
-            ques_num_list, correct_ans_list = ques_bank.get_ques_num_ans_list(index_df_list)
+            first_group = config[trade]['first group']
+            mid_group = config[trade]['mid group']
+            last_group = config[trade]['last group']
+            ques_per_cat_str = str(config[trade]['questions per category'])
+            ques_per_cat_list = [int(item) for item in ques_per_cat_str.split(',')]
+            index_df_list = ques_bank[trade].get_ques_list(first_group, mid_group, last_group, ques_per_cat_list)
+            ques_num_list, correct_ans_list = ques_bank[trade].get_ques_num_ans_list(index_df_list)
             # convert Python list to delimited string or it could not be stored into database
             index_df_str = ",".join(str(item) for item in index_df_list)
             ques_num_str = ",".join(item for item in ques_num_list)
@@ -227,9 +234,10 @@ def init_test_batch(batch_no):
             ans_list = ['0'] * len(index_df_list)
             ans_str = ",".join(item for item in ans_list)
             # indicate that the candidate has not yet attempted the test
-            candidate = Candidates(batch_no=batch_no, candidate_no=candidate_no, first_name=first_name, last_name=last_name,
-                                   phone_no=phone_no, index_df_str=index_df_str, ques_num_str=ques_num_str,
-                                   correct_ans_str=correct_ans_str, ans_str=ans_str, ques_no=1, test_completed=False)
+            candidate = Candidates(trade=trade, batch_no=batch_no, candidate_no=candidate_no, first_name=first_name,
+                                   last_name=last_name, phone_no=phone_no, index_df_str=index_df_str,
+                                   ques_num_str=ques_num_str, correct_ans_str=correct_ans_str, ans_str=ans_str,
+                                   ques_no=1, test_completed=False)
             db.session.add(candidate)
             db.session.commit()
             count = count + 1
@@ -245,37 +253,39 @@ def admin():
     if session['administrator'] != "Steve Fung":
         return redirect("/")
 
+    trade = session['trade']
     batch_no = session['batch_no']                                    # for the first entry of this html page
     if request.method == "POST":
+        trade = request.form["trade"]
         batch_no = int(request.form["batch_no"])
         if "init" in request.form:
-            count = init_test_batch(batch_no)
+            count = init_test_batch(trade, batch_no)
             flash(f"{count} records were newly added in the server.", "success")
         elif "show" in request.form:
             pass
         elif "terminate" in request.form:
-            for candidate in db.session.query(Candidates).filter_by(batch_no=batch_no).all():
+            for candidate in db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no).all():
                 candidate.test_completed = True
             db.session.commit()
             flash("Done.", "success")
         elif "compute" in request.form:
-            cs.compute_scores(batch_no)
+            cs.compute_scores(trade, batch_no)
             flash("Scores were also exported to Excel file 'scores.xlsx'.", "success")
         elif "change" in request.form:
             candidate_no = request.form["candidate_no"]
-            candidate = db.session.query(Candidates).filter_by(batch_no=batch_no, candidate_no=candidate_no).first()
+            candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
             if candidate is not None:
                 status = candidate.test_completed
                 candidate.test_completed = 1 - status
                 db.session.commit()
                 flash(f"Status was changed.", "success")
             else:
-                flash("Candidate no. not found.  Please check.", "success")
+                flash("Candidate not found.  Please check.", "success")
     # data will be a list of tuples
-    data = db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name,
-                            Candidates.test_completed, Candidates.final_score).filter_by(batch_no=batch_no).all()
+    data = (db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name,
+                            Candidates.test_completed, Candidates.final_score).filter_by(trade=trade, batch_no=batch_no).all())
     heading = ("Candidate No.", "Last Name", "First Name", "Test Completed", "Score")
-    return render_template("admin.html", batch_no=batch_no, headings=heading, data=data)
+    return render_template("admin.html", trade=trade, batch_no=batch_no, headings=heading, data=data)
 
 
 if __name__ == "__main__":

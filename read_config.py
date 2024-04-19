@@ -1,23 +1,31 @@
+from pathlib import Path
 import pandas as pd
 import openpyxl
+from draw_ques import DrawQuestions
 
-df = pd.read_excel("config.xlsx", header=None)
-d = dict(zip(df[0], df[1]))
 
-# It is assumed that the question groups are divided into two batches.
-# Each batch contribute one group of questions for each category, MxxA, OxxA.
-# If not, the "get_ques_list" function in draw_ques.py needs to be modified
-first_group = d['first group']
-mid_group = d['mid group']
-last_group = d['last group']
-first_category = d['first category']
-last_category = d['last category']
-ques_per_cat_str = str(d['questions per category'])
-ques_per_cat_list = [int(item) for item in ques_per_cat_str.split(',')]
+# Global variable storing trade specified configurations
+config = {}
+ques_bank = {}
 
-file_ques_bank = d['question bank']
-candidates_data = d['candidates data']
-file_scores = d['test results']
-language = d['language']
-file_testpaper = d['test paper']
-file_marksheet = d['marksheet']
+def create_trade_dicts():
+
+    directory = "static/test_config"
+    files = Path(directory).glob('config_*.xlsx')
+
+    for file in files:
+        df = pd.read_excel(file, header=None)
+        dict_trade = dict(zip(df[0], df[1]))
+
+        trade = dict_trade['trade']
+        file_ques_bank = dict_trade['question bank']
+        first_group = dict_trade['first group']
+        last_group = dict_trade['last group']
+        first_category = dict_trade['first category']
+        last_category = dict_trade['last category']
+        ques_bank[trade] = DrawQuestions(f"static/questions/{file_ques_bank}", first_group, last_group, first_category, last_category)
+        config[trade] = dict_trade
+
+
+
+
