@@ -210,7 +210,7 @@ def finish():
 # Retrieve candidates' information from Excel file, then prepare records in database
 def init_test_batch(trade, batch_no):
 
-    df = pd.read_excel("candidates.xlsx")
+    df = pd.read_excel("static/candidates.xlsx")
     filtered_dt = df.query('trade==@trade and batch_no == @batch_no')
     count = 0
     for index, row in filtered_dt.iterrows():
