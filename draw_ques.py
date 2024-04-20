@@ -4,7 +4,7 @@ import random
 
 
 # Parse a question bank Excel file and build up a 2D question position list, based on Group and Category
-class DrawQuestions():
+class DrawQuestions:
     def __init__(self, file_ques_bank, first_group, last_group, first_category, last_category):
         self.df = pd.read_excel(file_ques_bank)
 

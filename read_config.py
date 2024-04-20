@@ -27,7 +27,8 @@ def create_trade_dicts():
         first_category = dict_trade['first category']
         last_category = dict_trade['last category']
         # each trade contributes one entry in the dictionary
-        ques_bank[trade] = DrawQuestions(f"static/questions/{file_ques_bank}", first_group, last_group, first_category, last_category)
+        ques_bank[trade] = DrawQuestions(f"static/questions/{file_ques_bank}",
+                                         first_group, last_group, first_category, last_category)
         # again, each trade contributes one entry in the dictionary
         config[trade] = dict_trade
 
