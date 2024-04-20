@@ -84,7 +84,6 @@ def index():
 # Let candidate answer the MC questions one by one
 @app.route("/mc_test", methods=["GET", "POST"])
 def mc_test():
-    global ques_bank
 
     # if candidate has not yet logged in, direct to the log in page
     if not 'candidate_no' in session.keys():
