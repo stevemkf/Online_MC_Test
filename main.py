@@ -1,10 +1,11 @@
 from datetime import datetime, date
-from markupsafe import Markup
+
 from flask import Flask, render_template, request, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
-from read_config import *
-from compute_scores import ComputeScores
+from markupsafe import Markup
 
+from compute_scores import ComputeScores
+from read_config import *
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "there_is_no_secret"
@@ -51,7 +52,8 @@ def index():
             return redirect("/admin")
 
         # check if the candidate's test data exist in database
-        cand_data = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
+        cand_data = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no,
+                                                           candidate_no=candidate_no).first()
         if cand_data is not None:
             # check password
             if password != cand_data.phone_no:
@@ -155,7 +157,8 @@ def update_ans(completed):
     ans_list = session['ans_list']
     ans_str = ",".join(item for item in ans_list)
 
-    candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
+    candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no,
+                                                       candidate_no=candidate_no).first()
     # answers cannot be changed if test has been completed before.
     if candidate.test_completed is True:
         return -1
@@ -277,7 +280,8 @@ def admin():
             flash(message, category="success")
         elif "change" in request.form:
             candidate_no = request.form["candidate_no"]
-            candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
+            candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no,
+                                                               candidate_no=candidate_no).first()
             if candidate is not None:
                 status = candidate.test_completed
                 candidate.test_completed = 1 - status
@@ -287,7 +291,7 @@ def admin():
                 flash("Candidate not found.  Please check.", "success")
     # data will be a list of tuples
     data = (db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name,
-                            Candidates.test_completed, Candidates.final_score).filter_by(trade=trade, batch_no=batch_no).all())
+                             Candidates.test_completed, Candidates.final_score).filter_by(trade=trade,batch_no=batch_no).all())
     heading = ("Candidate No.", "Last Name", "First Name", "Test Completed", "Score")
     return render_template("admin.html", trade=trade, batch_no=batch_no, headings=heading, data=data)
 

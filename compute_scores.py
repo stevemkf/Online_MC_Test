@@ -1,7 +1,7 @@
 import openpyxl
 
 
-class ComputeScores():
+class ComputeScores:
     def __init__(self, db,):
         self.db = db
 
@@ -29,8 +29,8 @@ class ComputeScores():
         marksheet = []
         marksheet.append(['trade', 'batch no.', 'candidate no.', 'last name', 'first name', 'final score'])
         from main import Candidates
-        for candidate in self.db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, test_completed=True).all():
-            id = candidate.id
+        for candidate in self.db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no,
+                                                                     test_completed=True).all():
             candidate_no = candidate.candidate_no
             last_name = candidate.last_name
             first_name = candidate.first_name
