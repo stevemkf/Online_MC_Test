@@ -1,10 +1,9 @@
+from datetime import datetime, date
+from markupsafe import Markup
 from flask import Flask, render_template, request, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, date
 from read_config import *
 from compute_scores import ComputeScores
-import pandas as pd
-import openpyxl
 
 
 app = Flask(__name__)
@@ -129,6 +128,10 @@ def mc_test():
     index_df = session['ques_list'][ques_no - 1]
     trade = session['trade']
     ques = ques_bank[trade].get_question(index_df)
+    if ques["image"] == "":
+        path_image = ""
+    else:
+        path_image = f"static/image/{trade}/{ques['image']}"
     # remember those answers which have already been entered by the candidate
     existing_ans = session['ans_list'][ques_no - 1]
 
@@ -140,8 +143,8 @@ def mc_test():
                            choice_2=ques["choice_2"],
                            choice_3=ques["choice_3"],
                            choice_4=ques["choice_4"],
-                           fname_image=ques["image"],
-                           exist_ans=existing_ans)
+                           path_image=path_image,
+                           existing_ans=existing_ans)
 
 
 def update_ans(completed):
@@ -268,8 +271,10 @@ def admin():
             db.session.commit()
             flash("Done.", "success")
         elif "compute" in request.form:
-            cs.compute_scores(trade, batch_no)
-            flash("Scores were also exported to Excel file 'scores.xlsx'.", "success")
+            path_scores = f"static/scores/{trade}_{batch_no}_scores.xlsx"
+            cs.compute_scores(trade, batch_no, path_scores)
+            message = Markup(f"<a href = {path_scores} download>Click here to download the scores.</a>")
+            flash(message, category="success")
         elif "change" in request.form:
             candidate_no = request.form["candidate_no"]
             candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, candidate_no=candidate_no).first()
@@ -289,8 +294,8 @@ def admin():
 
 if __name__ == "__main__":
     with app.app_context():
+        # the database should have already been created prior to uploading to the hosting server
         db.create_all()
-
         # add host IP in case you want multiple candidates to sit for the test on local network
         # run(debug=True, host='192.168.1.69', port=5001)
         app.run(debug=True, port=5001)

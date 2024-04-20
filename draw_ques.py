@@ -3,7 +3,7 @@ import openpyxl
 import random
 
 
-# Parse the question bank Excel file and build up a 2D question position list, based on Group and Category
+# Parse a question bank Excel file and build up a 2D question position list, based on Group and Category
 class DrawQuestions():
     def __init__(self, file_ques_bank, first_group, last_group, first_category, last_category):
         self.df = pd.read_excel(file_ques_bank)
@@ -27,7 +27,7 @@ class DrawQuestions():
                 self.question_pos_lists[group][cat].append(index_df)
 
 
-    # Randomly draw questions for one test paper.  Return a list of indexes for the dataframe
+    # Randomly draw questions for one test paper.  Return a list of indexes for the dataframe.
     # It is assumed that the question groups are divided into two batches.
     # Each batch contribute one group of questions for each category, MxxA, OxxA.
     def get_ques_list(self, first_group, mid_group, last_group, ques_per_cat_list):
@@ -54,6 +54,7 @@ class DrawQuestions():
         return index_df_list
 
 
+    # Return the real question number (e.g. M1A) and correct answers for the drawn questions
     def get_ques_num_ans_list(self, index_df_list):
         ques_num_list = []
         ques_ans_list = []

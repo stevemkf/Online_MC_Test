@@ -7,13 +7,13 @@ class ComputeScores():
 
 
 # Create mark sheet as Excel file
-    def write_marksheet(self, marksheet):
+    def write_marksheet(self, markseet, path_scores):
         workbook = openpyxl.Workbook()
         # Select the default sheet (usually named 'Sheet')
         sheet = workbook.active
-        for item in marksheet:
+        for item in markseet:
             sheet.append(item)
-        workbook.save("scores.xlsx")
+        workbook.save(path_scores)
 
 
     def compute_score(self, correct_ans_list, ans_list):
@@ -24,10 +24,10 @@ class ComputeScores():
         return final_score
 
 
-    def compute_scores(self, trade, batch_no):
+    def compute_scores(self, trade, batch_no, path_scores):
         # computed scores will be written onto an Excel file, in addition to the database
         marksheet = []
-        marksheet.append(['trade, batch no.', 'candidate no.', 'last name', 'first name', 'final score'])
+        marksheet.append(['trade', 'batch no.', 'candidate no.', 'last name', 'first name', 'final score'])
         from main import Candidates
         for candidate in self.db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no, test_completed=True).all():
             id = candidate.id
@@ -44,7 +44,7 @@ class ComputeScores():
             # build the mark sheet
             marksheet.append([trade, batch_no, candidate_no, last_name, first_name, final_score])
         self.db.session.commit()
-        self.write_marksheet(marksheet)
+        self.write_marksheet(marksheet, path_scores)
 
 
 
