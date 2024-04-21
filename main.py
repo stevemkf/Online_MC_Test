@@ -67,6 +67,7 @@ def index():
             else:
                 # else, retrieve the data and keep them in session variables
                 # this will avoid excessive access to database during the test
+                session['id'] = cand_data.id
                 session['candidate_no'] = candidate_no
                 index_df_str = cand_data.index_df_str
                 ans_str = cand_data.ans_str
@@ -151,14 +152,14 @@ def mc_test():
 
 def update_ans(completed):
     # save candidate's answers into database
-    trade = session["trade"]
-    batch_no = session["batch_no"]
-    candidate_no = session["candidate_no"]
+    # trade = session['trade']
+    # batch_no = session['batch_no']
+    # candidate_no = session['candidate_no']
+    id = session['id']
     ans_list = session['ans_list']
     ans_str = ",".join(item for item in ans_list)
 
-    candidate = db.session.query(Candidates).filter_by(trade=trade, batch_no=batch_no,
-                                                       candidate_no=candidate_no).first()
+    candidate = db.session.query(Candidates).filter_by(id=id).first()
     # answers cannot be changed if test has been completed before.
     if candidate.test_completed is True:
         return -1
