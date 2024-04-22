@@ -10,7 +10,6 @@ from read_config import *
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "there_is_no_secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
-app.config['UPLOAD_EXTENSIONS'] = ['.bmp', '.jpg', '.png', '.gif']
 db = SQLAlchemy(app)
 cs = ComputeScores(db)
 create_trade_dicts()
@@ -262,10 +261,12 @@ def admin():
     trade = session['trade']
     batch_no = session['batch_no']                                    # for the first entry of this html page
     if request.method == "POST":
+        trade = request.form["trade"]
+        batch_no = request.form["batch_no"]
+        session['trade'] = trade
+        session['batch_no'] = batch_no
         if "upload" in request.form:
             return redirect("/upload")
-        trade = request.form["trade"]
-        batch_no = int(request.form["batch_no"])
         if "init" in request.form:
             count = init_test_batch(trade, batch_no)
             flash(f"{count} records were newly added in the server.", "success")
@@ -306,7 +307,8 @@ def upload():
         return redirect("/")
     if session['administrator'] != "Steve Fung":
         return redirect("/")
-    return render_template('upload.html')
+    else:
+        return render_template('upload.html')
 
 
 @app.route('/upload', methods=['POST'])
@@ -324,7 +326,7 @@ def upload_files():
                     uploaded_file.save(os.path.join("static/questions", filename))
             case "image":
                 file_ext = os.path.splitext(filename)[1]
-                if file_ext not in app.config['UPLOAD_EXTENSIONS']:
+                if file_ext not in [".bmp", ".jpg", ".png", ".gif"]:
                     return "Invalid file type", 400
                 else:
                     uploaded_file.save(os.path.join("static/image", trade, filename))
@@ -348,4 +350,4 @@ if __name__ == "__main__":
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
         # run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5002)
+        app.run(debug=True, port=5001)
