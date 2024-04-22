@@ -9,23 +9,28 @@
 </head>
 <body style="margin: 2rem;">
     <form method="post">
+        <button class="btn" type="submit" name="upload" value="upload" formnovalidate>
+            1) Upload candidates.xlsx, test configuration, question bank files to server</button><br><br>
         <label for="trade">Trade:</label>
         <input type="text" id="trade" name="trade" value={{ trade }} required>
+        <label for="batch_no">*** required for Function (2) to (6) ***</label><br><br>
         <label for="batch_no">Test batch No.:</label>
-        <input type="number" id="batch_no" name="batch_no" value={{ batch_no }} required><p></p>
+        <input type="number" id="batch_no" name="batch_no" value={{ batch_no }} required>
+        <label for="batch_no">*** required for Function (2) to (6) ***</label><br><br>
         <button class="btn" type="submit" name="init" value="init">
-            1) Read candidates.xlsx and create candidates' records in database</button><br><br>
+            2) Read candidates.xlsx and create candidates' records in database</button><br><br>
         <button class="btn" type="submit" name="show" value="show">
-            2) Shows candidates' test data</button><br><br>
+            3) Shows candidates' test data</button><br><br>
         <button class="btn" type="submit" name="terminate" value="terminate">
-            3) Terminate the test for all candidates</button><br><br>
+            4) Terminate the test for all candidates</button><br><br>
         <button class="btn" type="submit" name="compute" value="compute">
-            4) Compute final scores for candidates who have completed the test</button><br><br>
-        <button class="btn" type="submit" name="change" value="change">
-            5) Change a candidate's "Test Completed" status</button><br><br>
+            5) Compute final scores for candidates who have completed the test</button><br><br>
         <label for="candidate_no">Candidate No.:</label>
         <input type="text" id="candidate_no" name="candidate_no" value="e.g. EL123456">
-        <label for="candidate_no">*** required for Function (5) only ***</label><br><br>
+        <label for="candidate_no">*** required for Function (6) ***</label><br><br>
+        <button class="btn" type="submit" name="change" value="change">
+            6) Change a candidate's "Test Completed" status</button><br><br>
+
     </form>
     <br>
     <table class="table">

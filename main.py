@@ -1,15 +1,16 @@
 from datetime import datetime, date
-
+import os
 from flask import Flask, render_template, request, redirect, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from markupsafe import Markup
-
+from werkzeug.utils import secure_filename
 from compute_scores import ComputeScores
 from read_config import *
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "there_is_no_secret"
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///data.db"
+app.config['UPLOAD_EXTENSIONS'] = ['.bmp', '.jpg', '.png', '.gif']
 db = SQLAlchemy(app)
 cs = ComputeScores(db)
 create_trade_dicts()
@@ -252,7 +253,6 @@ def init_test_batch(trade, batch_no):
 
 @app.route("/admin", methods=["GET", "POST"])
 def admin():
-
     # if administrator has not logged in, direct to the log-in page
     if not 'administrator' in session.keys():
         return redirect("/")
@@ -262,6 +262,8 @@ def admin():
     trade = session['trade']
     batch_no = session['batch_no']                                    # for the first entry of this html page
     if request.method == "POST":
+        if "upload" in request.form:
+            return redirect("/upload")
         trade = request.form["trade"]
         batch_no = int(request.form["batch_no"])
         if "init" in request.form:
@@ -297,10 +299,53 @@ def admin():
     return render_template("admin.html", trade=trade, batch_no=batch_no, headings=heading, data=data)
 
 
+@app.route('/upload', methods=['GET'])
+def upload():
+    # if administrator has not logged in, direct to the log-in page
+    if not 'administrator' in session.keys():
+        return redirect("/")
+    if session['administrator'] != "Steve Fung":
+        return redirect("/")
+    return render_template('upload.html')
+
+
+@app.route('/upload', methods=['POST'])
+def upload_files():
+    file_type = request.form["file_type"]
+    trade = request.form["trade"]
+    uploaded_file = request.files["file"]
+    filename = secure_filename(uploaded_file.filename)
+    if filename != '':
+        match file_type:
+            case "questions":
+                if filename != f"questions_{trade}.xlsx":
+                    return "Invalid filename", 400
+                else:
+                    uploaded_file.save(os.path.join("static/questions", filename))
+            case "image":
+                file_ext = os.path.splitext(filename)[1]
+                if file_ext not in app.config['UPLOAD_EXTENSIONS']:
+                    return "Invalid file type", 400
+                else:
+                    uploaded_file.save(os.path.join("static/image", trade, filename))
+            case "test_config":
+                if filename != f"config_{trade}.xlsx":
+                    return "Invalid filename", 400
+                else:
+                    uploaded_file.save(os.path.join("static/test_config", filename))
+            case "candidates":
+                if filename != "candidates.xlsx":
+                    return "Invalid filename", 400
+                else:
+                    uploaded_file.save(os.path.join("static", filename))
+    # the client does not need to navigate away from its current page
+    return '', 204
+
+
 if __name__ == "__main__":
     with app.app_context():
         # the database should have already been created prior to uploading to the hosting server
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
         # run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5001)
+        app.run(debug=True, port=5002)

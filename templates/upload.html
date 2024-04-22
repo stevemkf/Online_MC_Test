@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+    <html>
+      <head>
+        <title>File Upload</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.7.1/min/dropzone.min.css">
+      </head>
+      <body>
+        <h1>File Upload</h1>
+        <form action="{{ url_for('upload_files') }}" class="dropzone">
+          <label for="file_type">File Type:</label>
+          <select name="file_type" id="file_type">
+            <option value="candidates">Candidate information</option>
+            <option value="questions">Question bank</option>
+            <option value="image">Question picture</option>
+            <option value="test_config">Test configuration</option>
+          </select>
+          <br><br>
+          <label for="trade">Trade:</label>
+          <select name="trade" id="trade">
+            <option value="EL">Electrician</option>
+            <option value="VM">Vehicle Mechanic</option>
+            <option value="VE">Vehicle Electrician</option>
+            <option value="VP">Vehicle Painter</option>
+            <option value="VBR">Vehicle Body Repairer</option>
+          </select>
+        </form>
+        <p></p>
+        <a href="{{ url_for('admin') }}">Back to the administrator page</a>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.7.1/min/dropzone.min.js"></script>
+      </body>
+    </html>
