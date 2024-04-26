@@ -41,8 +41,8 @@ def index():
     if request.method == "POST":
         trade = request.form["trade"]
         session['trade'] = trade
-        batch_no = request.form["batch_no"]
-        session['batch_no'] = int(batch_no)
+        batch_no = int(request.form["batch_no"])
+        session['batch_no'] = batch_no
         candidate_no = request.form["candidate_no"]
         password = request.form["password"]
 
@@ -152,9 +152,6 @@ def mc_test():
 
 def update_ans(completed):
     # save candidate's answers into database
-    # trade = session['trade']
-    # batch_no = session['batch_no']
-    # candidate_no = session['candidate_no']
     id = session['id']
     ans_list = session['ans_list']
     ans_str = ",".join(item for item in ans_list)
@@ -213,9 +210,8 @@ def finish():
 
 # Retrieve candidates' information from Excel file, then prepare records in database
 def init_test_batch(trade, batch_no):
-
     df = pd.read_excel("static/candidates.xlsx")
-    filtered_dt = df.query('trade==@trade and batch_no == @batch_no')
+    filtered_dt = df.query('trade == @trade and batch_no == @batch_no')
     count = 0
     for index, row in filtered_dt.iterrows():
         candidate_no = row['cand_no']
@@ -227,6 +223,8 @@ def init_test_batch(trade, batch_no):
                                                   candidate_no=candidate_no).first() is None:
             # draw one set of questions for each candidate
             first_group = config[trade]['first group']
+            if not isinstance(first_group, str):
+                first_group = ""
             mid_group = config[trade]['mid group']
             last_group = config[trade]['last group']
             ques_per_cat_str = str(config[trade]['questions per category'])
@@ -262,7 +260,7 @@ def admin():
     batch_no = session['batch_no']                                    # for the first entry of this html page
     if request.method == "POST":
         trade = request.form["trade"]
-        batch_no = request.form["batch_no"]
+        batch_no = int(request.form["batch_no"])
         session['trade'] = trade
         session['batch_no'] = batch_no
         if "upload" in request.form:
@@ -349,5 +347,5 @@ if __name__ == "__main__":
         # the database should have already been created prior to uploading to the hosting server
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
-        # run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5001)
+        # app.run(debug=True, host='192.168.1.69', port=5001)
+        app.run(debug=True, host='192.168.1.134', port=5001)

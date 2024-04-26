@@ -23,6 +23,9 @@ def create_trade_dicts():
         trade = dict_trade['trade']
         file_ques_bank = dict_trade['question bank']
         first_group = dict_trade['first group']
+        # special treatment in case there are only one group of questions, e.g. 01A, 02A, ... 01H, 02H, ...
+        if not isinstance(first_group, str):
+            first_group = ""
         last_group = dict_trade['last group']
         first_category = dict_trade['first category']
         last_category = dict_trade['last category']
@@ -31,6 +34,7 @@ def create_trade_dicts():
                                          first_group, last_group, first_category, last_category)
         # again, each trade contributes one entry in the dictionary
         config[trade] = dict_trade
+
 
 
 
