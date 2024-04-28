@@ -292,10 +292,21 @@ def admin():
             else:
                 flash("Candidate not found.  Please check.", "success")
     # data will be a list of tuples
-    data = (db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name,
+    data = (db.session.query(Candidates.candidate_no, Candidates.last_name, Candidates.first_name, Candidates.ans_str,
                              Candidates.test_completed, Candidates.final_score).filter_by(trade=trade,batch_no=batch_no).all())
-    heading = ("Candidate No.", "Last Name", "First Name", "Test Completed", "Score")
-    return render_template("admin.html", trade=trade, batch_no=batch_no, headings=heading, data=data)
+    # tuple contents cannot be modified
+    # so data (a list of tuples) are converted to data1 (a list of lists)
+    data1 = []
+    for cand_tuple in data:
+        cand_list = list(cand_tuple)
+        # count how many questions that a candidate has answered
+        ans_str = cand_list[3]
+        ans_list = [item for item in ans_str.split(',')]
+        ques_answered = sum(ans != "0" for ans in ans_list)
+        cand_list[3] = str(ques_answered)
+        data1.append(cand_list)
+    heading = ("Candidate No.", "Last Name", "First Name", "No. of questions answered", "Test Completed", "Score")
+    return render_template("admin.html", trade=trade, batch_no=batch_no, headings=heading, data=data1)
 
 
 @app.route('/upload', methods=['GET'])
@@ -350,4 +361,4 @@ if __name__ == "__main__":
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
         # app.run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5002)
+        app.run(debug=True, port=5001)
