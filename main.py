@@ -39,7 +39,7 @@ class Candidates(db.Model):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        trade = request.form["trade"]
+        trade = request.form["trade"].upper()
         session['trade'] = trade
         batch_no = int(request.form["batch_no"])
         session['batch_no'] = batch_no
@@ -259,7 +259,7 @@ def admin():
     trade = session['trade']
     batch_no = session['batch_no']                                    # for the first entry of this html page
     if request.method == "POST":
-        trade = request.form["trade"]
+        trade = request.form["trade"].upper()
         batch_no = int(request.form["batch_no"])
         session['trade'] = trade
         session['batch_no'] = batch_no
@@ -312,32 +312,34 @@ def upload():
 @app.route('/upload', methods=['POST'])
 def upload_files():
     file_type = request.form["file_type"]
-    trade = request.form["trade"]
+    trade = request.form["trade"].upper()
     uploaded_file = request.files["file"]
     filename = secure_filename(uploaded_file.filename)
     if filename != '':
+        folder = "static"
         match file_type:
+            case "candidates":
+                if filename != "candidates.xlsx":
+                    return "Invalid filename", 400
             case "questions":
                 if filename != f"questions_{trade}.xlsx":
                     return "Invalid filename", 400
                 else:
-                    uploaded_file.save(os.path.join("static/questions", filename))
+                    folder = "static/questions"
             case "image":
                 file_ext = os.path.splitext(filename)[1]
                 if file_ext not in [".bmp", ".jpg", ".png", ".gif"]:
                     return "Invalid file type", 400
                 else:
-                    uploaded_file.save(os.path.join("static/image", trade, filename))
+                    folder = f"static/image/{trade}"
             case "test_config":
                 if filename != f"config_{trade}.xlsx":
                     return "Invalid filename", 400
                 else:
-                    uploaded_file.save(os.path.join("static/test_config", filename))
-            case "candidates":
-                if filename != "candidates.xlsx":
-                    return "Invalid filename", 400
-                else:
-                    uploaded_file.save(os.path.join("static", filename))
+                    folder = "static/test_config"
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        uploaded_file.save(os.path.join(folder, filename))
     # the client does not need to navigate away from its current page
     return '', 204
 
@@ -348,4 +350,4 @@ if __name__ == "__main__":
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
         # app.run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, host='192.168.1.134', port=5001)
+        app.run(debug=True, port=5002)

@@ -16,13 +16,7 @@
           </select>
           <br><br>
           <label for="trade">Trade:</label>
-          <select name="trade" id="trade">
-            <option value="EL">Electrician</option>
-            <option value="VM">Vehicle Mechanic</option>
-            <option value="VE">Vehicle Electrician</option>
-            <option value="VP">Vehicle Painter</option>
-            <option value="VBR">Vehicle Body Repairer</option>
-          </select>
+          <input type="text" id="trade" name="trade" required>
         </form>
         <p></p>
         <a href="{{ url_for('admin') }}">Back to the administrator page</a>
