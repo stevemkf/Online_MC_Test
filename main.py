@@ -91,8 +91,7 @@ def mc_test():
     if not 'candidate_no' in session.keys():
         return redirect("/index")
 
-    increment = 0
-
+    ques_no = session['ques_no']
     if request.method == "POST":
         # save the answer just picked
         if "answer" in request.form:
@@ -114,19 +113,26 @@ def mc_test():
         # the candidate is allowed to move forward or backward
         if "direction" in request.form:
             direction = request.form["direction"]
-            if direction == "next":
-                increment = 1
-            elif direction == "prev":
-                increment = -1
-
-    # get the next/prev question
-    ques_no = session['ques_no'] + increment
-    total_ques = len(session['ques_list'])
-    if ques_no > total_ques:
-        ques_no = 1
-    if ques_no == 0:
-        ques_no = total_ques
-    session['ques_no'] = ques_no
+            total_ques = len(session['ques_list'])
+            match direction:
+                case "next":
+                    ques_no = ques_no + 1
+                    if ques_no > total_ques:
+                        ques_no = 1
+                case "prev":
+                    ques_no = ques_no - 1
+                    if ques_no == 0:
+                        ques_no = total_ques
+                case "jump":
+                    if "ques_no" not in request.form:
+                        pass
+                    else:
+                        ques_no = int(request.form["ques_no"])
+                        if ques_no > total_ques:
+                            ques_no = session['ques_no']
+                            flash(f"這次測驗只有{total_ques}條題目。", "success")
+                            flash(f"This test has {total_ques} questions only.", "success")
+            session['ques_no'] = ques_no
 
     index_df = session['ques_list'][ques_no - 1]
     trade = session['trade']
@@ -361,4 +367,4 @@ if __name__ == "__main__":
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
         # app.run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5001)
+        app.run(debug=True, port=5002)
