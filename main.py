@@ -150,7 +150,7 @@ def mc_test():
                            existing_ans=existing_ans)
 
 
-def update_ans(completed):
+def update_ans(completed: bool):
     # save candidate's answers into database
     id = session['id']
     ans_list = session['ans_list']
@@ -209,7 +209,7 @@ def finish():
 
 
 # Retrieve candidates' information from Excel file, then prepare records in database
-def init_test_batch(trade, batch_no):
+def init_test_batch(trade: str, batch_no: int):
     df = pd.read_excel("static/candidates.xlsx")
     filtered_dt = df.query('trade == @trade and batch_no == @batch_no')
     count = 0

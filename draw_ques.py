@@ -7,11 +7,11 @@ import random
 # Question group: e.g. M, N, O, P
 # Question category: e.g. A to H
 class DrawQuestions():
-    def __init__(self, file_ques_bank, first_group, last_group, first_category, last_category):
+    def __init__(self, file_ques_bank: str, first_group: str, last_group: str, first_category: str, last_category: str):
         self.df = pd.read_excel(file_ques_bank)
 
         if first_group != "":
-             total_groups = ord(last_group) - ord(first_group) + 1
+            total_groups = ord(last_group) - ord(first_group) + 1
         else:
             # special treatment in case there are only one group of questions, e.g. 01A, 02A, ... 01H, 02H, ...
             total_groups = 1
@@ -33,11 +33,10 @@ class DrawQuestions():
             if cat <= ord(last_category) - ord(first_category):
                 self.question_pos_lists[group][cat].append(index_df)
 
-
     # Randomly draw questions for one test paper.  Return a list of indexes for the dataframe.
     # It is assumed that the question groups are divided into two batches.
     # Each batch contribute one group of questions for each category, MxxA, OxxA.
-    def get_ques_list(self, first_group, mid_group, last_group, ques_per_cat_list):
+    def get_ques_list(self, first_group: str, mid_group: str, last_group: str, ques_per_cat_list: list[int]):
         index_df_list = []
         # The questions will follow the category orders, i.e. A to H
         # defensive programming - take care of excessive entries in config.sys
@@ -63,9 +62,8 @@ class DrawQuestions():
             index_df_list = index_df_list + cat_ques_drawn
         return index_df_list
 
-
     # Return the real question numbers (e.g. M1A, P12H) and correct answers for the drawn questions
-    def get_ques_num_ans_list(self, index_df_list):
+    def get_ques_num_ans_list(self, index_df_list: list[int]):
         ques_num_list = []
         ques_ans_list = []
         for index_df in index_df_list:
@@ -74,12 +72,11 @@ class DrawQuestions():
             ques_ans_list.append(str(row_content['ans']))
         return ques_num_list, ques_ans_list
 
-
     # Return full data of a particular question in the format of Python dictionary
-    def get_question(self, index_df):
+    def get_question(self, index_df: int):
         row_content = self.df.iloc[index_df]
         ques = dict()
-        ques["question_num"] = row_content['no']    # e.g. e.g. M01A, P04H
+        ques["question_num"] = row_content['no']  # e.g. e.g. M01A, P04H
         ques["question"] = row_content['question']
         ques["choice_1"] = str(row_content['cho1'])
         ques["choice_2"] = str(row_content['cho2'])
