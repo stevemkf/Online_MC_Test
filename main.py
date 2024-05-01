@@ -369,4 +369,4 @@ if __name__ == "__main__":
         db.create_all()
         # add host IP in case you want multiple candidates to sit for the test on local network
         # app.run(debug=True, host='192.168.1.69', port=5001)
-        app.run(debug=True, port=5002)
+        app.run(debug=True, port=5001)
