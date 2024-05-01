@@ -36,7 +36,7 @@ class DrawQuestions():
     # Randomly draw questions for one test paper.  Return a list of indexes for the dataframe.
     # It is assumed that the question groups are divided into two batches.
     # Each batch contribute one group of questions for each category, MxxA, OxxA.
-    def get_ques_list(self, first_group: str, mid_group: str, last_group: str, ques_per_cat_list: list[int]):
+    def get_ques_list(self, first_group: str, mid_group: str, last_group: str, ques_per_cat_list: list[int]) -> list[int]:
         index_df_list = []
         # The questions will follow the category orders, i.e. A to H
         # defensive programming - take care of excessive entries in config.sys
@@ -73,7 +73,7 @@ class DrawQuestions():
         return ques_num_list, ques_ans_list
 
     # Return full data of a particular question in the format of Python dictionary
-    def get_question(self, index_df: int):
+    def get_question(self, index_df: int) -> dict:
         row_content = self.df.iloc[index_df]
         ques = dict()
         ques["question_num"] = row_content['no']  # e.g. e.g. M01A, P04H

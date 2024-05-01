@@ -78,8 +78,8 @@ def index():
                 session['ques_no'] = cand_data.ques_no
                 return redirect("/mc_test")
         else:
-            flash("輸入資料不正確!", "error")
-            flash("Input data incorrect!", "error")
+            flash("該測驗場次沒有你的紀錄!", "error")
+            flash("Your record was not found in that test session!", "error")
     return render_template("index.html")
 
 
@@ -104,13 +104,13 @@ def mc_test():
             session.modified = True
             return redirect("/save")
 
-        # end of the test?
+        # end of test
         if "finish" in request.form:
             # without the following line, session variable will not be updated with the picked answer
             session.modified = True
             return redirect("/finish")
 
-        # the candidate is allowed to move forward or backward
+        # the candidate is allowed to move forward, backward or jump to any question
         if "direction" in request.form:
             direction = request.form["direction"]
             total_ques = len(session['ques_list'])
@@ -128,12 +128,14 @@ def mc_test():
                         pass
                     else:
                         ques_no = int(request.form["ques_no"])
+                        # jump out of range?
                         if ques_no > total_ques:
                             ques_no = session['ques_no']
                             flash(f"這次測驗只有{total_ques}條題目。", "success")
                             flash(f"This test has {total_ques} questions only.", "success")
             session['ques_no'] = ques_no
 
+    # index_df starts from 0 while ques_no starts from 1
     index_df = session['ques_list'][ques_no - 1]
     trade = session['trade']
     ques = ques_bank[trade].get_question(index_df)
@@ -141,7 +143,7 @@ def mc_test():
         path_image = ""
     else:
         path_image = f"static/image/{trade}/{ques['image']}"
-    # remember those answers which have already been entered by the candidate
+    # retrieve the answer which has been entered by the candidate before
     existing_ans = session['ans_list'][ques_no - 1]
 
     # show the question and answers to the candidate through HTML
@@ -156,7 +158,7 @@ def mc_test():
                            existing_ans=existing_ans)
 
 
-def update_ans(completed: bool):
+def update_ans(completed: bool) -> int:
     # save candidate's answers into database
     id = session['id']
     ans_list = session['ans_list']
@@ -215,7 +217,7 @@ def finish():
 
 
 # Retrieve candidates' information from Excel file, then prepare records in database
-def init_test_batch(trade: str, batch_no: int):
+def init_test_batch(trade: str, batch_no: int) -> int:
     df = pd.read_excel("static/candidates.xlsx")
     filtered_dt = df.query('trade == @trade and batch_no == @batch_no')
     count = 0

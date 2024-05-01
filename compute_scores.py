@@ -14,7 +14,7 @@ class ComputeScores:
             sheet.append(item)
         workbook.save(path_scores)
 
-    def compute_score(self, correct_ans_list: list[str], ans_list:list[str]):
+    def compute_score(self, correct_ans_list: list[str], ans_list:list[str]) -> int:
         final_score = 0
         for index in range(0, len(correct_ans_list)):
             if ans_list[index] == correct_ans_list[index]:
